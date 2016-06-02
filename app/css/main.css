@@ -71,3 +71,9 @@
 .column.over {
     border: 2px dashed #000;
 }
+
+#columns .column .value {
+    padding-top: 15px;
+    font-weight: bold;
+    text-shadow: #fff 0 1px;
+}

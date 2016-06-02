@@ -6,24 +6,65 @@
 // All the 'e.target' are normally interchangeable with 'this'.
 'use strict';
 //*
+var dragSrcEl = null;
+var ownControllerUUID = {uuid: getGuid()};
+var otherControllerUUID = {uuid: null};
+var exchangeFile = null;
+
+// will be stored w/ a localStorage using ownControllerUUID as key
+var fileStorage = null;
+
+var uuidStorage = null;
+
+// JSON Object used :
+// ownControllerUUID
+// objectToReplaceUUID
+// objectUUID
+// objectBody : TBD
 
 var cols = [document.querySelectorAll('#columns1 .column'),
-    document.querySelectorAll('#columns1 .empty-column'),
-    document.querySelectorAll('#columns2 .column'),
-    document.querySelectorAll('#columns2 .empty-column')];
+    document.querySelectorAll('#columns2 .column')];
+
+// var cols = document.querySelectorAll('#columns1 .column');
+
+/* ********************************** */
+/* ****** Function declaration ****** */
+/* ********************************** */
+
+// Perso
+var initF = init;
+var findObjectViaInnerHTMLF = findObjectViaInnerHTML;
+var getGuidF = getGuid;
+
+// Drag'n'Drop (DnD)
+var handleDragStartF = handleDragStart;
+var handleDragEnterF = handleDragEnter;
+var handleDragOverF = handleDragOver;
+var handleDragLeaveF = handleDragLeave;
+var handleDropF = handleDrop;
+var handleDragEndF = handleDragEnd;
+
+
+// Créer des objets représentants les objets dispo avec ou non un UUID
+// Stocker le tout dans le localStorage en String JSON
+// Les manipuler par la suite
+
 
 function handleDragStart(e) {
+    if (fileStorage === null) {
+        init();
+    }
     // Target (this) element is the source node.
     e.target.style.opacity = '0.4';
 
-    var dragSrcEl = e.target;
-    var json = JSON.stringify(e.target);
-    console.log('json: ' + json);
-    localStorage.setItem('movingTarget', json);
-    // console.log(e.target);
+    dragSrcEl = e.target;
+
+    var json = findObjectViaInnerHTML(e.target.innerHTML);
+    console.log(json);
 
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', dragSrcEl.innerHTML);
+    e.dataTransfer.setData('text/html', e.target.innerHTML);
+    localStorage.setItem('fileStorage', JSON.stringify(json));
     // console.log(e.target);
 }
 
@@ -61,15 +102,12 @@ function handleDrop(e) {
         e.stopPropagation(); // Stops some browsers from redirecting.
     }
 
-    var dragSrcEl = JSON.parse(localStorage.getItem('movingTarget'));
-    console.log('dragSrcEl: ' + dragSrcEl);
-    console.log('dragSrcEl.innerHTML:' + dragSrcEl.innerHTML);
     // Don't do anything if dropping the same column we're dragging.
     if (dragSrcEl != e.target) {
-        // Set the source column's HTML to the HTML of the column we dropped on.
-        dragSrcEl.innerHTML = e.target.innerHTML;
-        e.target.innerHTML = e.dataTransfer.getData('text/html');
+        var json = JSON.parse(localStorage.getItem('fileStorage'));
+        console.log(json);
     }
+
 
     return false;
 }
@@ -95,4 +133,85 @@ function handleDragEnd(e) {
         col.addEventListener('dragend', handleDragEnd, false);
     });
 });
+
+// Gets the original objects
+function init() {
+
+    console.log(localStorage.length);
+    // We put to everybody's sight our UUID
+    var tmp = localStorage.getItem('uuidStorage');
+    var uuidList = [];
+    var empty = JSON.stringify({uuidList: []});
+
+    // if empty, we populate
+    if (tmp === empty) {
+        uuidList.push(ownControllerUUID);
+        uuidStorage = {uuidList: uuidList};
+    } else { // if not, we complement
+        uuidStorage = JSON.parse(tmp);
+        otherControllerUUID = uuidStorage.uuidList[0].uuid;
+        uuidStorage.uuidList.push(ownControllerUUID);
+    }
+    var string = JSON.stringify(uuidStorage);
+    localStorage.setItem('uuidStorage', string);
+
+    fileStorage = [];
+
+    var i, j;
+    for (i = 0; i < cols.length; i++) {
+        for (j = 0; j < cols[i].length; j++) {
+            tmp = {uuid: getGuid(), body: cols[i][j].innerHTML};
+            fileStorage.push(tmp);
+        }
+    }
+}
+
+function clearAll() {
+    // localStorage.setItem('uuidStorage', JSON.stringify({uuidList: []}));
+    localStorage.clear();
+}
+
+
+function list() {
+    for(var i=0, len=localStorage.length; i<len; i++) {
+        var key = localStorage.key(i);
+        var value = localStorage[key];
+        console.log(key + ' => ' + value);
+    }
+}
+
+/**
+ * @return {JSON} the JSON object if found, null else
+ */
+function findObjectViaInnerHTML(innerHTML) {
+    var i;
+    for (i = 0; i < fileStorage.length; i++) {
+        if (fileStorage[i].body.indexOf(innerHTML) !== -1) {
+            return fileStorage[i];
+        }
+    }
+    return null;
+}
+
+function store(id, jsonObject) {
+    var value = JSON.stringify(jsonObject);
+    localStorage.setItem(id, value);
+}
+
+function getGuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function nodeToString(node) {
+    var tmpNode = document.createElement("div");
+    tmpNode.appendChild(node.cloneNode(true));
+    var str = tmpNode.innerHTML;
+    tmpNode = node = null; // prevent memory leaks in IE
+    return str;
+}
+
 //*/
+

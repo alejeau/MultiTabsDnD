@@ -60,10 +60,13 @@ function handleDrop(e) {
 
     // Don't do anything if dropping the same column we're dragging.
     if (dragSrcEl != e.target) {
+        dragSrcEl.style.opacity = '1';
+        e.target.style.opacity = '1';
         // Set the source column's HTML to the HTML of the column we dropped on.
         dragSrcEl.innerHTML = e.target.innerHTML;
         e.target.innerHTML = e.dataTransfer.getData('text/html');
     }
+
 
     return false;
 }
