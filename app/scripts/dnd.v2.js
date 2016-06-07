@@ -6,16 +6,23 @@
 // All the 'e.target' are normally interchangeable with 'this'.
 'use strict';
 //*
+const CONST = {
+    EXCHANGE_FILE: 'exchangeFile',
+    STORAGE_FILE: 'storageFile',
+    LINEAR_COLUMNS: 'linearColumns',
+    UUID_STORAGE: 'uuidStorage'
+};
+
 // var dragSrcEl = null;
 var ownControllerUUID = {uuid: getGuid()};
 var otherControllerUUID = {uuid: null};
-var linearColumns;
-var exchangeFile = null;
+// var linearColumns;
+// var exchangeFile = null;
 
 // will be stored w/ a localStorage using ownControllerUUID as key
-var fileStorage = null;
+// var fileStorage = null;
 
-var uuidStorage = null;
+// var uuidStorage = null;
 
 // JSON Object used :
 // ownControllerUUID
@@ -23,8 +30,8 @@ var uuidStorage = null;
 // objectUUID
 // objectBody : TBD
 
-var cols = [document.querySelectorAll('#columns1 .column'),
-    document.querySelectorAll('#columns2 .column')];
+var cols = [document.querySelectorAll('#columns1 .column')];//,
+// document.querySelectorAll('#columns2 .column')];
 
 // var cols = document.querySelectorAll('#columns1 .column');
 
@@ -33,7 +40,8 @@ var cols = [document.querySelectorAll('#columns1 .column'),
 /* ********************************** */
 
 // Perso
-// var init = init;
+// init();
+// var init = init();
 // var findObjectViaInnerHTML = findObjectViaInnerHTML;
 // var getGuid = getGuid;
 
@@ -52,6 +60,8 @@ var cols = [document.querySelectorAll('#columns1 .column'),
 
 
 function handleDragStart(e) {
+    console.log('**************************handleDragStart');
+    var fileStorage = getJson(getOwn(CONST.STORAGE_FILE));
     if (fileStorage === null) {
         init();
     }
@@ -59,26 +69,11 @@ function handleDragStart(e) {
     e.target.style.opacity = '0.4';
     e.dataTransfer.effectAllowed = 'move';
 
-    // dragSrcEl = e.target;
-
     var json = findObjectViaInnerHTML(e.target.innerHTML);
+    console.log('object found:');
     console.log(json);
-
-    // e.dataTransfer.setData('text/html', e.target.innerHTML);
-    localStorage.setItem('exchangeFile', JSON.stringify(json));
+    setJsonAsText(CONST.EXCHANGE_FILE, json);
 }
-
-function handleDragOver(e) {
-    if (e.preventDefault) {
-        // Prevents the default behavior of a browser; for instance preventing link opening to allow the DnD.
-        e.preventDefault();
-    }
-    e.dataTransfer.dropEffect = 'move';  // See the section on the DataTransfer object.
-
-    // Some browsers may not need this, but some do so we add it
-    return false;
-}
-
 
 // dragenter is used to toggle the 'over' class instead of the dragover.
 // If we were to use dragover, our CSS class would be toggled many times
@@ -86,63 +81,103 @@ function handleDragOver(e) {
 // Ultimately, that would cause the browser's renderer to do a large amount of unnecessary work.
 // Keeping redraws to a minimum is always a good idea.
 function handleDragEnter(e) {
+    console.log('**************************handleDragEnter');
     // this / e.target is the current hover target.
     e.target.classList.add('over');
 }
 
+function handleDragOver(e) {
+    console.log('**************************handleDragOver');
+    if (e.preventDefault) {
+        // Prevents the default behavior of a browser; for instance preventing link opening to allow the DnD.
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';  // See the section on the DataTransfer object.
+    return false; // Some browsers may not need this, but some do so we add it
+}
+
+
 function handleDragLeave(e) {
+    console.log('**************************handleDragLeave');
     e.target.classList.remove('over');  // this / e.target is previous target element.
 }
 
 function handleDrop(e) { // this/e.target is current target element.
+    console.log('**************************handleDrop');
     if (e.stopPropagation) {
         e.stopPropagation(); // Stops some browsers from redirecting.
     }
 
     // We get the object that's being dragged/dropped
-    var source = JSON.parse(localStorage.getItem('exchangeFile'));
+    var source = getJson(CONST.EXCHANGE_FILE);
+    console.log('source');
+    console.log(source);
+
+    if (source === null) {
+        console.log('source is null!');
+    }
 
     // Don't do anything if dropping the same column we're dragging.
     if (e.target.innerHTML !== source.body) {
-        // console.log(source);
         var target = findObjectViaInnerHTML(e.target.innerHTML);
+        var colNumTarget = getColNumOfObject(target);
+        //colNum du target actuel
+
+        // We keep the target's body
         var tmp = target.body;
+        // We swap
         e.target.innerHTML = source.body;
         target.body = source.body;
-        updateFileStorage(target);
+
+        // We set a new UUID
+        target.uuid = getGuid();
+
+        // We update the target
+        updateFileStorageAndLinearColumns(colNumTarget, target);
+
+        // We update the source
         source.body = tmp;
-        localStorage.setItem('exchangeFile', JSON.stringify(source));
+        console.log('new source');
+        console.log(source);
+        // We save the modifications
+        setJsonAsText(CONST.EXCHANGE_FILE, source);
     }
-
-
     return false;
 }
 
-function handleDragEnd(e) {
-    // this/e.target is the source node.
-    var json = JSON.parse(localStorage.getItem('exchangeFile'));
-    linearColumns = JSON.parse(localStorage.getItem('linearColumns' + ownControllerUUID.uuid));
+function handleDragEnd(e) { // this/e.target is the source node.
+    console.log('**************************handleDragEnd');
+    console.log('Wainting 1 second...');
+    window.setTimeout(function() {
+        console.log('Done.');
+        // We retrieve the modified source element
+        var json = getJson(CONST.EXCHANGE_FILE);
+        console.log('json');
+        console.log(json);
 
-    console.log(json);
+        // We get the objects column's number
+        var colNum = getColNumOfObject(json);
 
-    var i, j, k = 0;
-    for (i = 0; i < cols.length; i++) {
-        for (j = 0; j < cols[i].length; j++) {
-            cols[i][j].classList.remove('over');
-            if (linearColumns[k].uuid === json.uuid) {
-                e.target.innerHTML = json.body;
-                e.target.style.opacity = '1';
+        // Remplacer directement dans linearColumns
+        for (var i = 0; i < cols.length; i++) {
+            for (var j = 0; j < cols[i].length; j++) {
+                if (i * j + j === colNum) {
+                    cols[i][j].innerHTML = json.body;
+                    cols[i][j].style.opacity = '1';
+                }
             }
-            k++;
         }
-    }
-    updateFileStorage(json);
-    // var json = JSON.parse(localStorage.getItem('fileStorage' + ownControllerUUID.uuid));
+
+        json.uuid = getGuid();
+        console.log('new json');
+        console.log(json);
+        updateFileStorageAndLinearColumns(colNum, json);
+        setJsonAsText('fileExchange', null);
+    }, 1000);
 }
 
 function addEventListeners() {
-    console.log(cols);
-
+    console.log('addEventListeners');
     var i, j;
     for (i = 0; i < cols.length; i++) {
         for (j = 0; j < cols[i].length; j++) {
@@ -158,18 +193,16 @@ function addEventListeners() {
 
 // Gets the original objects
 function init() {
+    console.log('init');
     addEventListeners();
 
     console.log(localStorage.length);
     // We put to everybody's sight our UUID
-    var tmp = localStorage.getItem('uuidStorage');
+    var tmp = localStorage.getItem(CONST.UUID_STORAGE);
     var uuidList = [];
-    var empty = JSON.stringify({uuidList: []});
-
-    console.log(tmp);
-
+    var uuidStorage;
     // if empty, we populate
-    if ((tmp === empty) || (tmp === null)) {
+    if (tmp === null) {
         uuidList.push(ownControllerUUID);
         uuidStorage = {uuidList: uuidList};
     } else { // if not, we complement
@@ -179,34 +212,65 @@ function init() {
     }
 
     var string = JSON.stringify(uuidStorage);
-    localStorage.setItem('uuidStorage', string);
+    localStorage.setItem(CONST.UUID_STORAGE, string);
 
-    fileStorage = [];
-    linearColumns = [];
+    var fileStorage = [];
+    var linearColumns = [];
 
-    // populating fileStorage
-    var i, j, k = 0;
+    // populating fileStorage and linearColumns
+    var i, j;
     for (i = 0; i < cols.length; i++) {
         for (j = 0; j < cols[i].length; j++) {
             tmp = {uuid: getGuid(), body: cols[i][j].innerHTML};
             fileStorage.push(tmp);
-            linearColumns.push({colNum: k, uuid:tmp.uuid});
-            k++;
+            var col = i * j + j;
+            linearColumns.push({colNum: col, uuid: tmp.uuid});
         }
     }
     // Storing fileStorage in the local storage
-    localStorage.setItem('fileStorage' + ownControllerUUID.uuid, JSON.stringify(fileStorage));
-    localStorage.setItem('linearColumns' + ownControllerUUID.uuid, JSON.stringify(linearColumns));
+    setJsonAsText(getOwn(CONST.STORAGE_FILE), fileStorage);
+    setJsonAsText(getOwn(CONST.LINEAR_COLUMNS), linearColumns);
 
 }
 
+/**
+ *
+ * @param obj {JSON}
+ * @return {number}
+ */
+function getColNumOfObject(json) {
+    var linearColumns = getJson(getOwn(CONST.LINEAR_COLUMNS));
+    for (var i = 0; i < linearColumns.length; i++) {
+        if (linearColumns[i].uuid === json.uuid) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function updateFileStorageAndLinearColumns(colNum, objToUpdate) {
+    // getting the files fomr the local storage
+    var fileStorage = getJson(getOwn(CONST.STORAGE_FILE));
+    var linearColumns = getJson(getOwn(CONST.LINEAR_COLUMNS));
+
+    // updating...
+    fileStorage[colNum] = objToUpdate;
+    linearColumns[colNum] = objToUpdate;
+
+    // Storing in the local storage
+    setJsonAsText(getOwn(CONST.STORAGE_FILE), fileStorage);
+    setJsonAsText(getOwn(CONST.LINEAR_COLUMNS), linearColumns);
+}
+
 function clearAll() {
-    // localStorage.setItem('uuidStorage', JSON.stringify({uuidList: []}));
+    console.log('clearAll');
+    // localStorage.setItem(UUID_STORAGE, JSON.stringify({uuidList: []}));
     localStorage.clear();
 }
 
 
 function list() {
+    console.log('list');
     var len = localStorage.length;
     if (len === 0) {
         console.log('The localStorage is empty!');
@@ -223,8 +287,14 @@ function list() {
  * @return {JSON} the JSON object if found, null else
  */
 function findObjectViaInnerHTML(innerHTML) {
+    console.log('findObjectViaInnerHTML');
+    console.log('innerHTML');
+    console.log(innerHTML);
+    console.log('against: ');
+    var fileStorage = getJson(getOwn(CONST.STORAGE_FILE));
     var i;
     for (i = 0; i < fileStorage.length; i++) {
+        console.log(fileStorage[i]);
         if (fileStorage[i].body.indexOf(innerHTML) !== -1) {
             return fileStorage[i];
         }
@@ -233,27 +303,31 @@ function findObjectViaInnerHTML(innerHTML) {
 }
 
 function store(id, jsonObject) {
+    console.log('store');
     var value = JSON.stringify(jsonObject);
     localStorage.setItem(id, value);
 }
 
 function updateFileStorage(json) {
-    fileStorage = JSON.parse(localStorage.getItem('fileStorage' + ownControllerUUID.uuid));
+    console.log('updateFileStorage');
+    var fileStorage = JSON.parse(localStorage.getItem(getOwn(CONST.STORAGE_FILE)));
 
     // populating fileStorage
     var i;
     for (i = 0; i < cols.length; i++) {
         if (fileStorage[i].uuid === json.uuid) {
+            fileStorage[i].uuid = getGuid();
             fileStorage[i].body = json.body;
             break;
         }
     }
 
     // Storing fileStorage in the local storage
-    localStorage.setItem('fileStorage' + ownControllerUUID.uuid, JSON.stringify(fileStorage));
+    setJsonAsText(getOwn(CONST.STORAGE_FILE), fileStorage);
 }
 
 function getGuid() {
+    console.log('getGuid');
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
@@ -261,15 +335,35 @@ function getGuid() {
 }
 
 function getOwn(field) {
-    return field + ownControllerUUID;
+    console.log('getOwn');
+    return field + ownControllerUUID.uuid;
 }
 
 function nodeToString(node) {
+    console.log('nodeToString');
     var tmpNode = document.createElement("div");
     tmpNode.appendChild(node.cloneNode(true));
     var str = tmpNode.innerHTML;
     tmpNode = node = null; // prevent memory leaks in IE
     return str;
+}
+
+/**
+ * @param item{string}
+ * @return {JSON}
+ */
+function getJson(item) {
+    var str = localStorage.getItem(item);
+    return JSON.parse(str);
+}
+
+/**
+ * @param item{string}
+ * @param json{JSON}
+ */
+function setJsonAsText(item, json) {
+    var str = JSON.stringify(json);
+    localStorage.setItem(item, str);
 }
 
 //*/

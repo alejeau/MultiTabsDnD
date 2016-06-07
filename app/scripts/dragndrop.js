@@ -14,6 +14,7 @@ var cols = [document.querySelectorAll('#columns1 .column'),
     document.querySelectorAll('#columns2 .empty-column')];
 
 function handleDragStart(e) {
+    console.log('handleDragStart');
     // Target (this) element is the source node.
     e.target.style.opacity = '0.4';
 
@@ -25,6 +26,7 @@ function handleDragStart(e) {
 }
 
 function handleDragOver(e) {
+    console.log('handleDragOver');
     if (e.preventDefault) {
         // Prevents the default behavior of a browser; for instance preventing link opening to allow the DnD.
         e.preventDefault();
@@ -43,15 +45,18 @@ function handleDragOver(e) {
 // Ultimately, that would cause the browser's renderer to do a large amount of unnecessary work.
 // Keeping redraws to a minimum is always a good idea.
 function handleDragEnter(e) {
+    console.log('handleDragEnter');
     // this / e.target is the current hover target.
     e.target.classList.add('over');
 }
 
 function handleDragLeave(e) {
+    console.log('handleDragLeave');
     e.target.classList.remove('over');  // this / e.target is previous target element.
 }
 
 function handleDrop(e) {
+    console.log('handleDrop');
     // this/e.target is current target element.
 
     if (e.stopPropagation) {
@@ -72,6 +77,7 @@ function handleDrop(e) {
 }
 
 function handleDragEnd(e) {
+    console.log('handleDragEnd');
     // this/e.target is the source node.
 
     [].forEach.call(cols, function (c) {
@@ -79,6 +85,7 @@ function handleDragEnd(e) {
             col.classList.remove('over');
         });
     });
+    console.log('***************************');
 }
 
 

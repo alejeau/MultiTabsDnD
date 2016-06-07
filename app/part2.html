@@ -7,30 +7,27 @@
 </head>
 <body>
 Columns 1:
-<div id="columns2">
-    <div class="column" draggable="true">
-        <header>Z</header>
-    </div>
+<div class="value" id="columns1">
+    <div class="column" draggable="true"><header>v</header><div class="value" id="21"></div></div>
+    <div class="column" draggable="true"><header>W</header><div class="value" id="22"></div></div>
+    <!--<div class="column" draggable="true"><header>X</header><div class="value" id="23"></div></div>-->
+    <!--<div class="column" draggable="true"><header>Y</header><div class="value" id="24"></div></div>-->
 </div>
 
 <br><br><br><br><br><br><br><br><br><br><br>
 
-Columns 2:
-<div id="columns1">
-    <div class="column" draggable="true">
-        <header>V</header>
-    </div>
-    <div class="column" draggable="true">
-        <header>W</header>
-    </div>
-    <div class="column" draggable="true">
-        <header>X</header>
-    </div>
-    <div class="column" draggable="true">
-        <header>Y</header>
-    </div>
-</div>
+<!--Columns 2:-->
+<!--<div class="value" id="columns2">-->
+    <!--<div class="column" draggable="true"><header>Z</header><div class="value" id="25"></div></div>-->
+<!--</div>-->
 
-<script src="scripts/dragndrop.js"></script>
+<button type="button" onclick="init()">init()</button>
+<button type="button" onclick="clearAll()">clear()</button>
+<button type="button" onclick="list()">list()</button>
+<button type="button" onclick="test()">test()</button>
+
+<!--<script src="scripts/lockr.js" type="text/javascript"></script>-->
+<!--<script src="scripts/dragndrop.js" type="text/javascript"></script>-->
+<script src="scripts/dnd.v2.js" type="text/javascript"></script>
 </body>
 </html>
