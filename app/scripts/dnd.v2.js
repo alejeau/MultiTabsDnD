@@ -7,15 +7,15 @@
 'use strict';
 //*
 const CONST = {
-    EXCHANGE_FILE: 'exchangeFile',
+    DRAG_EXCHANGE_FILE: 'dragExchangeFile',
+    DROP_EXCHANGE_FILE: 'dropExchangeFile',
     STORAGE_FILE: 'storageFile',
-    LINEAR_COLUMNS: 'linearColumns',
-    UUID_STORAGE: 'uuidStorage'
+    LINEAR_COLUMNS: 'linearColumns'
 };
 
 // var dragSrcEl = null;
 var ownControllerUUID = {uuid: getGuid()};
-var otherControllerUUID = {uuid: null};
+// var otherControllerUUID = {uuid: null};
 // var linearColumns;
 // var exchangeFile = null;
 
@@ -72,7 +72,7 @@ function handleDragStart(e) {
     var json = findObjectViaInnerHTML(e.target.innerHTML);
     console.log('object found:');
     console.log(json);
-    setJsonAsText(CONST.EXCHANGE_FILE, json);
+    setJsonAsText(CONST.DRAG_EXCHANGE_FILE, json);
 }
 
 // dragenter is used to toggle the 'over' class instead of the dragover.
@@ -109,7 +109,8 @@ function handleDrop(e) { // this/e.target is current target element.
     }
 
     // We get the object that's being dragged/dropped
-    var source = getJson(CONST.EXCHANGE_FILE);
+    var source = getJson(CONST.DRAG_EXCHANGE_FILE);
+    clearField(CONST.DRAG_EXCHANGE_FILE);
     console.log('source');
     console.log(source);
 
@@ -140,40 +141,42 @@ function handleDrop(e) { // this/e.target is current target element.
         console.log('new source');
         console.log(source);
         // We save the modifications
-        setJsonAsText(CONST.EXCHANGE_FILE, source);
+        setJsonAsText(CONST.DROP_EXCHANGE_FILE, source);
     }
     return false;
 }
 
 function handleDragEnd(e) { // this/e.target is the source node.
     console.log('**************************handleDragEnd');
-    console.log('Wainting 1 second...');
-    window.setTimeout(function() {
-        console.log('Done.');
-        // We retrieve the modified source element
-        var json = getJson(CONST.EXCHANGE_FILE);
-        console.log('json');
-        console.log(json);
-
-        // We get the objects column's number
-        var colNum = getColNumOfObject(json);
-
-        // Remplacer directement dans linearColumns
-        for (var i = 0; i < cols.length; i++) {
-            for (var j = 0; j < cols[i].length; j++) {
-                if (i * j + j === colNum) {
-                    cols[i][j].innerHTML = json.body;
-                    cols[i][j].style.opacity = '1';
-                }
-            }
-        }
-
-        json.uuid = getGuid();
-        console.log('new json');
-        console.log(json);
-        updateFileStorageAndLinearColumns(colNum, json);
-        setJsonAsText('fileExchange', null);
-    }, 1000);
+    if (e.dataTransfer.dropEffect !== 'none') {
+        console.log('Waiting for json retrieval...');
+        waitAndGetDropped();
+        // var json = getJson(CONST.DROP_EXCHANGE_FILE);
+        //
+        // console.log('Done.');
+        // // We retrieve the modified source element
+        // console.log('json');
+        // console.log(json);
+        //
+        // // We get the objects column's number
+        // var colNum = getColNumOfObject(json);
+        //
+        // // Remplacer directement dans linearColumns
+        // for (var i = 0; i < cols.length; i++) {
+        //     for (var j = 0; j < cols[i].length; j++) {
+        //         if (i * j + j === colNum) {
+        //             cols[i][j].innerHTML = json.body;
+        //             cols[i][j].style.opacity = '1';
+        //         }
+        //     }
+        // }
+        //
+        // json.uuid = getGuid();
+        // console.log('new json');
+        // console.log(json);
+        // updateFileStorageAndLinearColumns(colNum, json);
+        // clearField(CONST.DROP_EXCHANGE_FILE);
+    }
 }
 
 function addEventListeners() {
@@ -196,29 +199,11 @@ function init() {
     console.log('init');
     addEventListeners();
 
-    console.log(localStorage.length);
-    // We put to everybody's sight our UUID
-    var tmp = localStorage.getItem(CONST.UUID_STORAGE);
-    var uuidList = [];
-    var uuidStorage;
-    // if empty, we populate
-    if (tmp === null) {
-        uuidList.push(ownControllerUUID);
-        uuidStorage = {uuidList: uuidList};
-    } else { // if not, we complement
-        uuidStorage = JSON.parse(tmp);
-        otherControllerUUID = uuidStorage.uuidList[0].uuid;
-        uuidStorage.uuidList.push(ownControllerUUID);
-    }
-
-    var string = JSON.stringify(uuidStorage);
-    localStorage.setItem(CONST.UUID_STORAGE, string);
-
     var fileStorage = [];
     var linearColumns = [];
 
     // populating fileStorage and linearColumns
-    var i, j;
+    var i, j, tmp;
     for (i = 0; i < cols.length; i++) {
         for (j = 0; j < cols[i].length; j++) {
             tmp = {uuid: getGuid(), body: cols[i][j].innerHTML};
@@ -264,7 +249,6 @@ function updateFileStorageAndLinearColumns(colNum, objToUpdate) {
 
 function clearAll() {
     console.log('clearAll');
-    // localStorage.setItem(UUID_STORAGE, JSON.stringify({uuidList: []}));
     localStorage.clear();
 }
 
@@ -339,15 +323,6 @@ function getOwn(field) {
     return field + ownControllerUUID.uuid;
 }
 
-function nodeToString(node) {
-    console.log('nodeToString');
-    var tmpNode = document.createElement("div");
-    tmpNode.appendChild(node.cloneNode(true));
-    var str = tmpNode.innerHTML;
-    tmpNode = node = null; // prevent memory leaks in IE
-    return str;
-}
-
 /**
  * @param item{string}
  * @return {JSON}
@@ -364,6 +339,63 @@ function getJson(item) {
 function setJsonAsText(item, json) {
     var str = JSON.stringify(json);
     localStorage.setItem(item, str);
+}
+
+/**
+ * @param field {string}
+ */
+function clearField(field) {
+    localStorage.removeItem(field);
+}
+
+// /**
+//  * @return {JSON}
+//  */
+var launcher;
+function waitAndGetDropped() {
+    console.log('waitAndGetDropped');
+    launcher = setInterval(function (){
+        console.log('wait');
+        var json = getJson(CONST.DROP_EXCHANGE_FILE);
+        if (json !== null && json !== undefined) {
+            clearInterval(launcher);
+            getThatDroppedBeat(json);
+        }
+    }, 100);
+}
+
+function wait(callback) {
+    console.log('wait');
+    var json = getJson(CONST.DROP_EXCHANGE_FILE);
+    if (json !== null && json !== undefined) {
+        clearInterval(launcher);
+        callback();
+    }
+}
+
+function getThatDroppedBeat(json) {
+    console.log('getThatDroppedBeat');
+    console.log('json');
+    console.log(json);
+
+    // We get the objects column's number
+    var colNum = getColNumOfObject(json);
+
+    // Remplacer directement dans linearColumns
+    for (var i = 0; i < cols.length; i++) {
+        for (var j = 0; j < cols[i].length; j++) {
+            if (i * j + j === colNum) {
+                cols[i][j].innerHTML = json.body;
+                cols[i][j].style.opacity = '1';
+            }
+        }
+    }
+
+    json.uuid = getGuid();
+    console.log('new json');
+    console.log(json);
+    updateFileStorageAndLinearColumns(colNum, json);
+    clearField(CONST.DROP_EXCHANGE_FILE);
 }
 
 //*/
